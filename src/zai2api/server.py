@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import uuid
@@ -13,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from .account_pool import AccountPool
 from .auth import AuthService
 from .config import Settings, settings
-from .db import Database
+from .db import AccountRecord, Database, LogRecord
 from .prompt_assembly import assemble_prompt
 from .zai_client import UpstreamResult, ZAIClient, normalize_usage
 
@@ -80,6 +81,7 @@ class AppServices:
     db: Database
     auth: AuthService
     prompt_pool: SupportsPromptPool
+    account_pool: AccountPool | None
     managed_upstream_client: ZAIClient | None
 
 
@@ -87,25 +89,34 @@ def create_app(
     app_settings: Settings | None = None,
     upstream_client: ZAIClient | None = None,
     prompt_pool: SupportsPromptPool | None = None,
+    account_pool: AccountPool | None = None,
 ) -> FastAPI:
     resolved_settings = app_settings or settings
     db = Database(resolved_settings.database_path)
     auth = AuthService(resolved_settings, db)
 
     managed_upstream_client = upstream_client
+    managed_account_pool = account_pool
+
     if prompt_pool is None:
-        if managed_upstream_client is not None:
-            resolved_prompt_pool: SupportsPromptPool = SingleClientPool(managed_upstream_client)
+        if managed_account_pool is not None:
+            resolved_prompt_pool: SupportsPromptPool = managed_account_pool
+        elif managed_upstream_client is not None:
+            resolved_prompt_pool = SingleClientPool(managed_upstream_client)
         else:
-            resolved_prompt_pool = AccountPool(resolved_settings, db)
+            managed_account_pool = AccountPool(resolved_settings, db)
+            resolved_prompt_pool = managed_account_pool
     else:
         resolved_prompt_pool = prompt_pool
+        if managed_account_pool is None and isinstance(prompt_pool, AccountPool):
+            managed_account_pool = prompt_pool
 
     services = AppServices(
         settings=resolved_settings,
         db=db,
         auth=auth,
         prompt_pool=resolved_prompt_pool,
+        account_pool=managed_account_pool,
         managed_upstream_client=managed_upstream_client,
     )
 
@@ -122,12 +133,26 @@ def create_app(
                 "api_auth_enabled": services.auth.is_api_auth_enabled(),
                 "panel_password_source": services.auth.panel_password_source(),
                 "persisted_accounts": services.db.count_accounts(),
+                "poll_interval_seconds": services.settings.account_poll_interval_seconds,
             },
         )
         app.state.services = services
-        yield
-        if services.managed_upstream_client is not None:
-            await services.managed_upstream_client.aclose()
+
+        poll_task: asyncio.Task[None] | None = None
+        if services.account_pool is not None and services.settings.account_poll_interval_seconds > 0:
+            poll_task = asyncio.create_task(run_account_health_monitor(services))
+
+        try:
+            yield
+        finally:
+            if poll_task is not None:
+                poll_task.cancel()
+                try:
+                    await poll_task
+                except asyncio.CancelledError:
+                    pass
+            if services.managed_upstream_client is not None:
+                await services.managed_upstream_client.aclose()
 
     app = FastAPI(title="zai2api", lifespan=lifespan)
 
@@ -163,15 +188,7 @@ def create_app(
                     "source": current_services.auth.api_password_source(),
                     "enabled": current_services.auth.is_api_auth_enabled(),
                 },
-                "accounts": {
-                    "persisted_total": current_services.db.count_accounts(),
-                    "persisted_enabled": current_services.db.count_accounts(enabled_only=True),
-                    "using_env_fallback": current_services.db.count_accounts(enabled_only=True) == 0
-                    and bool(
-                        current_services.settings.zai_jwt
-                        or current_services.settings.zai_session_token
-                    ),
-                },
+                "accounts": account_summary(current_services),
                 "frontend_ready": False,
             }
         )
@@ -235,12 +252,97 @@ def create_app(
                     "source": current_services.auth.api_password_source(),
                     "enabled": current_services.auth.is_api_auth_enabled(),
                 },
-                "accounts": {
-                    "persisted_total": current_services.db.count_accounts(),
-                    "persisted_enabled": current_services.db.count_accounts(enabled_only=True),
-                },
+                "accounts": account_summary(current_services),
             }
         )
+
+    @app.get("/api/admin/accounts")
+    async def admin_list_accounts(request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        pool = require_managed_account_pool(current_services)
+        return JSONResponse({"accounts": [serialize_account(item) for item in pool.list_accounts()]})
+
+    @app.post("/api/admin/accounts")
+    async def admin_add_account(request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        pool = require_managed_account_pool(current_services)
+        payload = await request.json()
+        jwt = str(payload.get("jwt") or "").strip()
+        if not jwt:
+            raise HTTPException(status_code=400, detail="jwt is required")
+        account = await pool.register_jwt(jwt)
+        return JSONResponse({"account": serialize_account(account)})
+
+    @app.post("/api/admin/accounts/{account_id}/enable")
+    async def admin_enable_account(account_id: int, request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        pool = require_managed_account_pool(current_services)
+        account = pool.set_account_enabled(account_id, True)
+        return JSONResponse({"account": serialize_account(account)})
+
+    @app.post("/api/admin/accounts/{account_id}/disable")
+    async def admin_disable_account(account_id: int, request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        pool = require_managed_account_pool(current_services)
+        account = pool.set_account_enabled(account_id, False)
+        return JSONResponse({"account": serialize_account(account)})
+
+    @app.post("/api/admin/accounts/{account_id}/check")
+    async def admin_check_account(account_id: int, request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        pool = require_managed_account_pool(current_services)
+        account = await pool.check_account(account_id)
+        return JSONResponse({"account": serialize_account(account)})
+
+    @app.get("/api/admin/logs")
+    async def admin_logs(request: Request, limit: int = 100) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        safe_limit = max(1, min(limit, 500))
+        return JSONResponse({"logs": [serialize_log(item) for item in current_services.db.list_logs(safe_limit)]})
+
+    @app.get("/api/admin/settings/security")
+    async def admin_security_settings(request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        return JSONResponse(serialize_security_settings(current_services))
+
+    @app.post("/api/admin/settings/security")
+    async def admin_update_security_settings(request: Request) -> JSONResponse:
+        current_services = get_services(request)
+        require_admin_session(request, current_services)
+        payload = await request.json()
+        changed: list[str] = []
+
+        panel_password = str(payload.get("panel_password") or "").strip()
+        if panel_password:
+            current_services.auth.update_panel_password(panel_password)
+            changed.append("panel_password")
+
+        if bool(payload.get("disable_api_password")):
+            current_services.auth.update_api_password(None)
+            changed.append("api_password_disabled")
+        else:
+            api_password = str(payload.get("api_password") or "").strip()
+            if api_password:
+                current_services.auth.update_api_password(api_password)
+                changed.append("api_password")
+
+        if not changed:
+            raise HTTPException(status_code=400, detail="No security changes requested")
+
+        current_services.db.add_log(
+            level="info",
+            category="settings",
+            message="Updated security settings",
+            details={"changed": changed},
+        )
+        return JSONResponse(serialize_security_settings(current_services))
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request):
@@ -608,6 +710,24 @@ async def stream_responses(
     yield b"data: [DONE]\n\n"
 
 
+async def run_account_health_monitor(services: AppServices) -> None:
+    assert services.account_pool is not None
+    interval = services.settings.account_poll_interval_seconds
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            await services.account_pool.check_all_accounts()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            services.db.add_log(
+                level="warning",
+                category="accounts",
+                message="Background account health check failed",
+                details={"error": str(exc)},
+            )
+
+
 def get_services(request: Request) -> AppServices:
     return request.app.state.services  # type: ignore[return-value]
 
@@ -617,6 +737,12 @@ def require_admin_session(request: Request, services: AppServices) -> None:
     if services.auth.verify_admin_session(session_id):
         return
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin authentication required")
+
+
+def require_managed_account_pool(services: AppServices) -> AccountPool:
+    if services.account_pool is not None:
+        return services.account_pool
+    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Account management unavailable")
 
 
 def enforce_api_password(request: Request, services: AppServices) -> None:
@@ -632,6 +758,71 @@ def enforce_api_password(request: Request, services: AppServices) -> None:
         details={"path": str(request.url.path)},
     )
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API password")
+
+
+def account_summary(services: AppServices) -> dict[str, Any]:
+    persisted_enabled = services.db.count_accounts(enabled_only=True)
+    return {
+        "persisted_total": services.db.count_accounts(),
+        "persisted_enabled": persisted_enabled,
+        "using_env_fallback": persisted_enabled == 0
+        and bool(services.settings.zai_jwt or services.settings.zai_session_token),
+    }
+
+
+def serialize_account(account: AccountRecord) -> dict[str, Any]:
+    return {
+        "id": account.id,
+        "user_id": account.user_id,
+        "email": account.email,
+        "name": account.name,
+        "enabled": account.enabled,
+        "status": account.status,
+        "last_checked_at": account.last_checked_at,
+        "last_error": account.last_error,
+        "failure_count": account.failure_count,
+        "masked_jwt": mask_secret(account.jwt),
+        "masked_session_token": mask_secret(account.session_token),
+        "created_at": account.created_at,
+        "updated_at": account.updated_at,
+    }
+
+
+def serialize_log(record: LogRecord) -> dict[str, Any]:
+    return {
+        "id": record.id,
+        "created_at": record.created_at,
+        "level": record.level,
+        "category": record.category,
+        "message": record.message,
+        "details": record.details,
+    }
+
+
+def serialize_security_settings(services: AppServices) -> dict[str, Any]:
+    panel_source = services.auth.panel_password_source()
+    api_source = services.auth.api_password_source()
+    return {
+        "panel_password": {
+            "source": panel_source,
+            "default_password_active": panel_source == "default",
+            "overridden_by_env": panel_source == "env",
+        },
+        "api_password": {
+            "source": api_source,
+            "enabled": services.auth.is_api_auth_enabled(),
+            "overridden_by_env": api_source == "env",
+        },
+        "poll_interval_seconds": services.settings.account_poll_interval_seconds,
+    }
+
+
+def mask_secret(secret: str | None, prefix: int = 6, suffix: int = 4) -> str | None:
+    if secret is None:
+        return None
+    if len(secret) <= prefix + suffix:
+        return "*" * len(secret)
+    return f"{secret[:prefix]}***{secret[-suffix:]}"
 
 
 def assemble_responses_prompt(payload: dict[str, Any]) -> str:

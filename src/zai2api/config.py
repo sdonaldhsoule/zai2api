@@ -58,6 +58,7 @@ class Settings:
         "yes",
         "on",
     }
+    account_poll_interval_seconds: int = int(os.getenv("ACCOUNT_POLL_INTERVAL_SECONDS", "300"))
 
     @property
     def admin_session_ttl_seconds(self) -> int:
