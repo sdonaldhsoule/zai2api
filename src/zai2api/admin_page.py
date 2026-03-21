@@ -117,7 +117,8 @@ def render_admin_page() -> str:
               .nav-button,
               .ghost-button,
               .primary-button,
-              .secondary-button {
+              .secondary-button,
+              .danger-button {
                 border: 1px solid transparent;
                 border-radius: 16px;
                 background: transparent;
@@ -196,25 +197,34 @@ def render_admin_page() -> str:
                 font-size: 14px;
               }
 
-              .top-actions { display: flex; gap: 10px; align-items: center; }
+              .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
               .ghost-button,
               .secondary-button,
-              .primary-button {
+              .primary-button,
+              .danger-button {
                 padding: 12px 16px;
                 min-height: 44px;
               }
 
               .ghost-button,
-              .secondary-button {
+              .secondary-button,
+              .danger-button {
                 border-color: var(--line);
                 background: rgba(255,255,255,0.04);
               }
 
               .ghost-button:hover,
-              .secondary-button:hover {
+              .secondary-button:hover,
+              .danger-button:hover {
                 background: rgba(255,255,255,0.08);
                 border-color: var(--line-strong);
+              }
+
+              .danger-button {
+                color: #ffd6d6;
+                border-color: rgba(255, 123, 123, 0.24);
+                background: rgba(255, 123, 123, 0.08);
               }
 
               .primary-button {
@@ -231,7 +241,8 @@ def render_admin_page() -> str:
 
               .primary-button:disabled,
               .secondary-button:disabled,
-              .ghost-button:disabled {
+              .ghost-button:disabled,
+              .danger-button:disabled {
                 opacity: 0.56;
                 cursor: not-allowed;
                 transform: none;
@@ -243,33 +254,61 @@ def render_admin_page() -> str:
                 display: grid;
                 grid-template-rows: auto auto minmax(0, 1fr);
                 gap: 18px;
+                overflow: auto;
+                padding-right: 4px;
               }
 
-              .hero {
+              .hero,
+              .split-grid,
+              .stats-grid,
+              .placeholder-grid,
+              .account-grid,
+              .security-grid {
                 display: grid;
-                grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
                 gap: 18px;
               }
+
+              .hero { grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr); }
+              .split-grid { grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); }
+              .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+              .placeholder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+              .account-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+              .security-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 
               .hero-card,
               .mini-card,
               .view-card,
               .login-card,
               .toast,
-              .inline-card {
+              .inline-card,
+              .account-card,
+              .log-card,
+              .form-card {
                 border: 1px solid var(--line);
                 background: rgba(255,255,255,0.05);
                 border-radius: var(--radius-lg);
                 box-shadow: var(--shadow-md);
               }
 
-              .hero-card {
+              .hero-card,
+              .view-card,
+              .form-card {
                 padding: 22px;
                 display: grid;
                 gap: 18px;
               }
 
-              .hero-kicker {
+              .mini-card,
+              .inline-card,
+              .account-card,
+              .log-card {
+                padding: 16px;
+                display: grid;
+                gap: 10px;
+              }
+
+              .hero-kicker,
+              .chip {
                 display: inline-flex;
                 width: fit-content;
                 align-items: center;
@@ -291,29 +330,14 @@ def render_admin_page() -> str:
                 max-width: 14ch;
               }
 
-              .hero-text {
-                margin: 0;
+              .hero-text,
+              .metric-copy,
+              .placeholder-copy,
+              .muted-copy,
+              .field-hint,
+              .login-copy {
                 color: var(--text-1);
-                line-height: 1.7;
-                max-width: 68ch;
-              }
-
-              .hero-stats,
-              .stats-grid,
-              .placeholder-grid {
-                display: grid;
-                gap: 14px;
-              }
-
-              .hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-              .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-              .placeholder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-              .mini-card,
-              .inline-card {
-                padding: 16px;
-                display: grid;
-                gap: 8px;
+                line-height: 1.65;
               }
 
               .metric-label {
@@ -328,33 +352,25 @@ def render_admin_page() -> str:
                 font-weight: 700;
               }
 
-              .metric-copy,
-              .placeholder-copy,
-              .muted-copy,
-              .field-hint,
-              .login-copy {
-                color: var(--text-1);
-                line-height: 1.6;
-              }
-
-              .view-card {
-                min-height: 0;
-                padding: 22px;
-                display: grid;
-                gap: 18px;
-              }
-
               .view-header {
                 display: flex;
                 align-items: flex-start;
                 justify-content: space-between;
                 gap: 16px;
+                flex-wrap: wrap;
               }
 
               .view-header h2,
               .login-title {
                 margin: 0;
                 font-size: 22px;
+              }
+
+              .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
               }
 
               .placeholder-tile {
@@ -389,6 +405,97 @@ def render_admin_page() -> str:
               .status-dot.success { background: var(--success); }
               .status-dot.error { background: var(--danger); }
 
+              .field-group {
+                display: grid;
+                gap: 10px;
+              }
+
+              .field-row {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px;
+              }
+
+              .field-label {
+                color: var(--text-1);
+                font-size: 13px;
+                font-weight: 600;
+              }
+
+              .field-input,
+              .field-textarea {
+                width: 100%;
+                min-height: 50px;
+                padding: 14px 16px;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.14);
+                background: rgba(255,255,255,0.05);
+                color: var(--text-0);
+                outline: none;
+                transition: 160ms ease;
+                resize: vertical;
+                font: inherit;
+              }
+
+              .field-textarea { min-height: 150px; }
+
+              .field-input:focus,
+              .field-textarea:focus {
+                border-color: rgba(135, 187, 255, 0.46);
+                box-shadow: 0 0 0 4px rgba(106, 169, 255, 0.16);
+              }
+
+              .inline-actions,
+              .account-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+              }
+
+              .account-card-header,
+              .log-card-header {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                align-items: flex-start;
+              }
+
+              .account-card-title,
+              .log-card-title {
+                font-size: 18px;
+                font-weight: 700;
+                margin: 0;
+              }
+
+              .account-meta,
+              .log-meta {
+                color: var(--text-2);
+                font-size: 13px;
+              }
+
+              .detail-list {
+                display: grid;
+                gap: 10px;
+              }
+
+              .detail-row {
+                display: grid;
+                grid-template-columns: 120px 1fr;
+                gap: 10px;
+                align-items: start;
+              }
+
+              .detail-row code,
+              .log-details {
+                font-family: "Cascadia Code", "Consolas", monospace;
+                background: rgba(255,255,255,0.04);
+                border-radius: 12px;
+                padding: 6px 8px;
+                overflow: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+              }
+
               .login-layer {
                 position: fixed;
                 inset: 0;
@@ -406,34 +513,9 @@ def render_admin_page() -> str:
                 background: linear-gradient(180deg, rgba(20, 26, 42, 0.88), rgba(10, 14, 22, 0.9));
                 display: grid;
                 gap: 18px;
-              }
-
-              .field-group {
-                display: grid;
-                gap: 10px;
-              }
-
-              .field-label {
-                color: var(--text-1);
-                font-size: 13px;
-                font-weight: 600;
-              }
-
-              .field-input {
-                width: 100%;
-                min-height: 50px;
-                padding: 14px 16px;
-                border-radius: 16px;
-                border: 1px solid rgba(255,255,255,0.14);
-                background: rgba(255,255,255,0.05);
-                color: var(--text-0);
-                outline: none;
-                transition: 160ms ease;
-              }
-
-              .field-input:focus {
-                border-color: rgba(135, 187, 255, 0.46);
-                box-shadow: 0 0 0 4px rgba(106, 169, 255, 0.16);
+                border: 1px solid var(--line);
+                border-radius: var(--radius-lg);
+                box-shadow: var(--shadow-md);
               }
 
               .banner {
@@ -480,6 +562,7 @@ def render_admin_page() -> str:
 
               .toast.success { border-left-color: var(--success); }
               .toast.error { border-left-color: var(--danger); }
+              .toast.warn { border-left-color: var(--warning); }
 
               .hidden { display: none !important; }
 
@@ -491,9 +574,12 @@ def render_admin_page() -> str:
                   min-height: 100%;
                 }
                 .hero,
+                .split-grid,
                 .stats-grid,
-                .hero-stats,
-                .placeholder-grid { grid-template-columns: 1fr; }
+                .placeholder-grid,
+                .account-grid,
+                .security-grid,
+                .field-row { grid-template-columns: 1fr; }
               }
             </style>
           </head>
@@ -572,7 +658,14 @@ def render_admin_page() -> str:
                 currentView: 'overview',
                 loggedIn: false,
                 bootstrap: null,
-                isBusy: false,
+                accounts: null,
+                security: null,
+                logs: null,
+                loading: {
+                  accounts: false,
+                  security: false,
+                  logs: false,
+                },
               };
 
               const navList = document.getElementById('nav-list');
@@ -602,12 +695,30 @@ def render_admin_page() -> str:
                 setTimeout(() => node.remove(), 3200);
               }
 
-              function setBusy(flag) {
-                state.isBusy = flag;
+              function setTopBusy(flag) {
                 refreshButton.disabled = flag;
                 logoutButton.disabled = flag;
                 loginSubmit.disabled = flag;
                 loginSubmit.textContent = flag ? 'Signing in...' : 'Sign in';
+              }
+
+              function formatTimestamp(value) {
+                if (!value) return '—';
+                const date = new Date(value * 1000);
+                return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+              }
+
+              async function api(path, options = {}) {
+                const response = await fetch(path, {
+                  credentials: 'same-origin',
+                  headers: { 'content-type': 'application/json', ...(options.headers || {}) },
+                  ...options,
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                  throw new Error(payload.detail || 'Request failed');
+                }
+                return payload;
               }
 
               function renderNav() {
@@ -620,12 +731,6 @@ def render_admin_page() -> str:
                     </button>
                   `;
                 }).join('');
-                navList.querySelectorAll('[data-view]').forEach((button) => {
-                  button.addEventListener('click', () => {
-                    state.currentView = button.dataset.view;
-                    render();
-                  });
-                });
               }
 
               function metricCard(label, value, copy) {
@@ -638,13 +743,64 @@ def render_admin_page() -> str:
                 `;
               }
 
+              function statusBadge(enabled, status) {
+                const tone = enabled && status === 'active' ? 'success' : (!enabled || status === 'invalid' ? 'error' : '');
+                const label = `${enabled ? 'Enabled' : 'Disabled'} · ${status}`;
+                return `<span class="status-pill"><span class="status-dot ${tone}"></span>${label}</span>`;
+              }
+
+              function accountCard(account) {
+                return `
+                  <article class="account-card">
+                    <div class="account-card-header">
+                      <div>
+                        <h3 class="account-card-title">${account.name || account.email || account.user_id || 'Unnamed account'}</h3>
+                        <div class="account-meta">${account.email || account.user_id || 'No identity available'}</div>
+                      </div>
+                      ${statusBadge(account.enabled, account.status)}
+                    </div>
+                    <div class="detail-list">
+                      <div class="detail-row"><span class="metric-label">JWT</span><code>${account.masked_jwt || '—'}</code></div>
+                      <div class="detail-row"><span class="metric-label">Session</span><code>${account.masked_session_token || '—'}</code></div>
+                      <div class="detail-row"><span class="metric-label">Checked</span><div class="muted-copy">${formatTimestamp(account.last_checked_at)}</div></div>
+                      <div class="detail-row"><span class="metric-label">Failures</span><div class="muted-copy">${account.failure_count}</div></div>
+                      <div class="detail-row"><span class="metric-label">Last error</span><div class="muted-copy">${account.last_error || 'None'}</div></div>
+                    </div>
+                    <div class="account-actions">
+                      <button class="secondary-button" data-action="check-account" data-account-id="${account.id}">Check</button>
+                      <button class="${account.enabled ? 'danger-button' : 'ghost-button'}" data-action="toggle-account" data-account-id="${account.id}" data-enabled="${account.enabled ? '1' : '0'}">${account.enabled ? 'Disable' : 'Enable'}</button>
+                    </div>
+                  </article>
+                `;
+              }
+
+              function logCard(log) {
+                const tone = log.level === 'warning' ? 'warn' : (log.level === 'error' ? 'error' : 'success');
+                return `
+                  <article class="log-card">
+                    <div class="log-card-header">
+                      <div>
+                        <div class="metric-label">${log.category}</div>
+                        <h3 class="log-card-title">${log.message}</h3>
+                      </div>
+                      <span class="status-pill"><span class="status-dot ${tone === 'success' ? 'success' : tone === 'error' ? 'error' : ''}"></span>${log.level}</span>
+                    </div>
+                    <div class="log-meta">${formatTimestamp(log.created_at)}</div>
+                    <div class="log-details">${log.details ? JSON.stringify(log.details, null, 2) : 'No details'}</div>
+                  </article>
+                `;
+              }
+
               function overviewView() {
                 const bootstrap = state.bootstrap || {};
-                const accounts = bootstrap.accounts || {};
-                const panelPassword = bootstrap.panel_password || {};
-                const apiPassword = bootstrap.api_password || {};
+                const accounts = state.accounts || [];
+                const security = state.security || bootstrap;
+                const logs = state.logs || [];
+                const panelPassword = (security.panel_password || bootstrap.panel_password || {});
+                const apiPassword = (security.api_password || bootstrap.api_password || {});
+                const summary = bootstrap.accounts || {};
                 const defaultBanner = panelPassword.default_password_active
-                  ? '<div class="banner warn">Panel password is currently using the default fallback <strong>123456</strong>. Change it in the next step for safer administration.</div>'
+                  ? '<div class="banner warn">Panel password is currently using the default fallback <strong>123456</strong>. Change it now from the Security page.</div>'
                   : '';
                 return `
                   <section class="hero">
@@ -652,100 +808,160 @@ def render_admin_page() -> str:
                       <div class="hero-kicker">Operational Snapshot</div>
                       <h2 class="hero-title">Account routing is online and ready for live control.</h2>
                       <p class="hero-text">
-                        This shell is intentionally focused on readiness feedback. The next phase will wire the live forms, tables,
-                        and streaming log views directly into these sections.
+                        All critical backend actions are now connected. You can register JWT credentials, rotate passwords,
+                        and inspect audit events directly from this console.
                       </p>
                       ${defaultBanner}
-                      <div class="hero-stats">
-                        ${metricCard('Persisted accounts', accounts.persisted_total ?? 0, 'Accounts currently stored in SQLite.')}
-                        ${metricCard('Enabled accounts', accounts.persisted_enabled ?? 0, 'Healthy accounts available for routing.')}
-                        ${metricCard('API auth', apiPassword.enabled ? 'On' : 'Off', apiPassword.enabled ? 'Requests require the configured API password.' : 'Requests are currently open because no API password is active.')}
+                      <div class="stats-grid">
+                        ${metricCard('Persisted accounts', summary.persisted_total ?? 0, 'Accounts currently stored in SQLite.')}
+                        ${metricCard('Enabled accounts', summary.persisted_enabled ?? 0, 'Accounts available for routing right now.')}
+                        ${metricCard('API auth', apiPassword.enabled ? 'On' : 'Off', apiPassword.enabled ? 'API requests currently require the configured password.' : 'API requests are currently open because no API password is active.')}
+                        ${metricCard('Recent logs', logs.length, 'Entries loaded into the current frontend session.')}
                       </div>
                     </article>
                     <article class="hero-card">
-                      <div class="metric-label">Security posture</div>
-                      <div class="status-pill">
-                        <span class="status-dot ${apiPassword.enabled ? 'success' : ''}"></span>
-                        Panel password source: ${panelPassword.source || 'unknown'}
-                      </div>
-                      <div class="status-pill">
-                        <span class="status-dot ${accounts.using_env_fallback ? '' : 'success'}"></span>
-                        ${accounts.using_env_fallback ? 'Using env fallback credentials' : 'Using persisted account pool'}
-                      </div>
-                      <div class="muted-copy">
-                        Account, security, and logs pages are scaffolded below with the same routing model the final UI will use.
-                      </div>
+                      <div class="metric-label">Readiness summary</div>
+                      ${statusBadge(Boolean(summary.persisted_enabled), summary.using_env_fallback ? 'env-fallback' : 'pool')}
+                      <div class="muted-copy">Active panel password source: <strong>${panelPassword.source || 'unknown'}</strong>.</div>
+                      <div class="muted-copy">API password source: <strong>${apiPassword.source || 'disabled'}</strong>.</div>
+                      <div class="muted-copy">Loaded accounts in current view cache: <strong>${accounts.length}</strong>.</div>
+                      <div class="banner info">Use the sidebar to switch between account, security, and log workflows without leaving the current session.</div>
                     </article>
                   </section>
-                  <section class="stats-grid">
-                    ${metricCard('Panel auth source', panelPassword.source || 'unknown', 'Env takes precedence over database and fallback.')}
-                    ${metricCard('API password source', apiPassword.source || 'disabled', 'Disabled means /v1 requests currently do not require auth.')}
-                    ${metricCard('Env fallback', accounts.using_env_fallback ? 'Yes' : 'No', 'When no persisted account is enabled, env credentials can still route requests.')}
-                    ${metricCard('Frontend stage', 'Shell', 'Forms, tables, and live log explorers land in the next UI pass.')}
+                  <section class="view-card">
+                    <div class="view-header">
+                      <div>
+                        <h2>Recent audit activity</h2>
+                        <p class="muted-copy">The three latest audit entries are mirrored here for fast context.</p>
+                      </div>
+                    </div>
+                    <div class="account-grid">
+                      ${logs.slice(0, 3).map(logCard).join('') || '<div class="banner info">No logs loaded yet. Open the Logs page or press Refresh.</div>'}
+                    </div>
                   </section>
                 `;
               }
 
-              function placeholderView(title, copy, bullets) {
+              function accountsView() {
+                const accounts = state.accounts || [];
+                return `
+                  <section class="split-grid">
+                    <article class="form-card">
+                      <div class="view-header">
+                        <div>
+                          <h2>Add account</h2>
+                          <p class="muted-copy">Paste a JWT. The backend will verify it, derive the session token, and persist the account.</p>
+                        </div>
+                        <span class="chip">Validation + persist</span>
+                      </div>
+                      <form id="add-account-form" class="field-group">
+                        <label class="field-label" for="new-jwt">JWT credential</label>
+                        <textarea class="field-textarea" id="new-jwt" placeholder="eyJhbGciOi..." required></textarea>
+                        <div class="inline-actions">
+                          <button class="primary-button" type="submit" id="add-account-submit">Verify and save</button>
+                        </div>
+                      </form>
+                    </article>
+                    <article class="view-card">
+                      <div class="view-header">
+                        <div>
+                          <h2>Account pool</h2>
+                          <p class="muted-copy">Enable, disable, or manually check any persisted account.</p>
+                        </div>
+                        <div class="toolbar">
+                          <button class="ghost-button" data-action="reload-accounts">Reload accounts</button>
+                          <span class="status-pill"><span class="status-dot ${accounts.length ? 'success' : ''}"></span>${accounts.length} loaded</span>
+                        </div>
+                      </div>
+                      <div class="account-grid">
+                        ${accounts.length ? accounts.map(accountCard).join('') : '<div class="banner info">No persisted accounts yet. Add the first JWT from the card on the left.</div>'}
+                      </div>
+                    </article>
+                  </section>
+                `;
+              }
+
+              function securityView() {
+                const security = state.security || { panel_password: {}, api_password: {}, poll_interval_seconds: 0 };
+                const panel = security.panel_password || {};
+                const apiPassword = security.api_password || {};
+                return `
+                  <section class="security-grid">
+                    <article class="form-card">
+                      <div class="view-header">
+                        <div>
+                          <h2>Panel password</h2>
+                          <p class="muted-copy">Rotate the password used to unlock the admin surface.</p>
+                        </div>
+                        ${statusBadge(true, panel.source || 'unknown')}
+                      </div>
+                      <div class="banner ${panel.overridden_by_env ? 'warn' : 'info'}">
+                        ${panel.overridden_by_env ? 'Env value currently overrides database state. Saved changes will not become effective until the env override is removed.' : 'Database-backed settings are active for panel login.'}
+                      </div>
+                      <form id="panel-password-form" class="field-group">
+                        <label class="field-label" for="panel-password-next">New panel password</label>
+                        <input class="field-input" id="panel-password-next" type="password" autocomplete="new-password" required />
+                        <div class="inline-actions">
+                          <button class="primary-button" type="submit">Update panel password</button>
+                        </div>
+                      </form>
+                    </article>
+
+                    <article class="form-card">
+                      <div class="view-header">
+                        <div>
+                          <h2>API password</h2>
+                          <p class="muted-copy">Control whether `/v1/*` requires a password and rotate that credential when needed.</p>
+                        </div>
+                        ${statusBadge(apiPassword.enabled, apiPassword.source || 'disabled')}
+                      </div>
+                      <div class="banner ${apiPassword.overridden_by_env ? 'warn' : 'info'}">
+                        ${apiPassword.overridden_by_env ? 'Env value overrides the database-backed API password configuration.' : apiPassword.enabled ? 'API authentication is enabled.' : 'API authentication is currently disabled.'}
+                      </div>
+                      <form id="api-password-form" class="field-group">
+                        <label class="field-label" for="api-password-next">New API password</label>
+                        <input class="field-input" id="api-password-next" type="password" autocomplete="new-password" />
+                        <div class="inline-actions">
+                          <button class="primary-button" type="submit">Save API password</button>
+                          <button class="ghost-button" type="button" data-action="disable-api-password">Disable API auth</button>
+                        </div>
+                      </form>
+                      <div class="inline-card">
+                        <div class="metric-label">Polling interval</div>
+                        <div class="metric-value">${security.poll_interval_seconds ?? 0}s</div>
+                        <div class="metric-copy">Configured background account health check interval.</div>
+                      </div>
+                    </article>
+                  </section>
+                `;
+              }
+
+              function logsView() {
+                const logs = state.logs || [];
                 return `
                   <section class="view-card">
                     <div class="view-header">
                       <div>
-                        <h2>${title}</h2>
-                        <p class="muted-copy">${copy}</p>
+                        <h2>Audit logs</h2>
+                        <p class="muted-copy">Review account operations, security changes, and warnings emitted by the backend.</p>
                       </div>
-                      <div class="status-pill"><span class="status-dot"></span>Interactive wiring lands next</div>
+                      <div class="toolbar">
+                        <button class="ghost-button" data-action="reload-logs">Refresh logs</button>
+                        <span class="status-pill"><span class="status-dot ${logs.length ? 'success' : ''}"></span>${logs.length} loaded</span>
+                      </div>
                     </div>
-                    <div class="placeholder-grid">
-                      ${bullets.map((bullet) => `
-                        <article class="placeholder-tile">
-                          <div class="metric-label">Planned interaction</div>
-                          <div class="placeholder-copy">${bullet}</div>
-                        </article>
-                      `).join('')}
+                    <div class="account-grid">
+                      ${logs.length ? logs.map(logCard).join('') : '<div class="banner info">No audit entries loaded yet. Press Refresh to try again.</div>'}
                     </div>
                   </section>
                 `;
               }
 
               function renderContent() {
-                if (state.currentView === 'overview') {
-                  return overviewView();
-                }
-                if (state.currentView === 'accounts') {
-                  return placeholderView(
-                    'Account operations',
-                    'Add JWT credentials, inspect pool health, and manually repair disabled accounts from one place.',
-                    [
-                      'JWT submission with inline validation, optimistic loading, and success / failure toasts.',
-                      'Account cards with state badges, failure counters, and manual check actions.',
-                      'Round-robin pool summary and env-fallback visibility for routing confidence.',
-                      'Toggle buttons for enable / disable with immediate state reflection.',
-                    ],
-                  );
-                }
-                if (state.currentView === 'security') {
-                  return placeholderView(
-                    'Security controls',
-                    'Update panel access and API password policy with clear confirmation feedback.',
-                    [
-                      'Change panel password with validation and safe success feedback.',
-                      'Enable, rotate, or disable API password enforcement.',
-                      'Show whether settings are overridden by env so the operator is never confused.',
-                      'Surface the polling interval and security posture summary in one place.',
-                    ],
-                  );
-                }
-                return placeholderView(
-                  'Audit log console',
-                  'Browse account lifecycle events, security updates, and request-level warnings without leaving the control center.',
-                  [
-                    'Live log stream with filter chips for category and severity.',
-                    'Recent failures pinned at the top for fast incident triage.',
-                    'Compact timeline cards tuned for terminal-like readability.',
-                    'Refresh and retention controls with subtle progress feedback.',
-                  ],
-                );
+                if (state.currentView === 'overview') return overviewView();
+                if (state.currentView === 'accounts') return accountsView();
+                if (state.currentView === 'security') return securityView();
+                return logsView();
               }
 
               function render() {
@@ -754,7 +970,7 @@ def render_admin_page() -> str:
                 const accounts = bootstrap.accounts || {};
                 headlineTitle.textContent = state.loggedIn ? 'Control center online' : 'Authentication required';
                 headlineCopy.textContent = state.loggedIn
-                  ? 'You are looking at the Fluent shell. Live management workflows will be connected in the next implementation phase.'
+                  ? 'The admin panel is connected to real backend workflows for account routing, security, and audit exploration.'
                   : 'Sign in to unlock account orchestration, security settings, and audit visibility.';
                 sidebarPosture.textContent = state.loggedIn
                   ? `Persisted ${accounts.persisted_enabled ?? 0} / ${accounts.persisted_total ?? 0} accounts. ${accounts.using_env_fallback ? 'Env fallback is active.' : 'Persisted pool is active.'}`
@@ -783,65 +999,249 @@ def render_admin_page() -> str:
               }
 
               async function refreshBootstrap(showToastOnSuccess = false) {
+                const response = await api('/api/admin/bootstrap', { headers: {} });
+                state.bootstrap = response;
+                state.loggedIn = Boolean(response.logged_in);
+                loginHint.textContent = response.panel_password?.default_password_active
+                  ? 'Default fallback password is active. Sign in and rotate it as soon as possible.'
+                  : 'Use the active panel password to access the admin surface.';
+                if (!state.loggedIn) {
+                  state.accounts = null;
+                  state.security = null;
+                  state.logs = null;
+                }
+                render();
+                if (showToastOnSuccess) {
+                  showToast('Control plane refreshed.', 'success');
+                }
+              }
+
+              async function ensureViewData(view = state.currentView) {
+                if (!state.loggedIn) return;
                 try {
-                  const response = await fetch('/api/admin/bootstrap', { credentials: 'same-origin' });
-                  const payload = await response.json();
-                  state.bootstrap = payload;
-                  state.loggedIn = Boolean(payload.logged_in);
-                  loginHint.textContent = payload.panel_password?.default_password_active
-                    ? 'Default fallback password is active. Sign in and rotate it as soon as possible.'
-                    : 'Use the active panel password to access the admin surface.';
-                  render();
-                  if (showToastOnSuccess) {
-                    showToast('Control plane refreshed.', 'success');
+                  if (view === 'overview' || view === 'accounts') {
+                    state.loading.accounts = true;
+                    const payload = await api('/api/admin/accounts', { headers: {} });
+                    state.accounts = payload.accounts;
                   }
-                } catch (error) {
-                  console.error(error);
-                  showToast('Failed to refresh bootstrap state.', 'error');
+                  if (view === 'overview' || view === 'security') {
+                    state.loading.security = true;
+                    state.security = await api('/api/admin/settings/security', { headers: {} });
+                  }
+                  if (view === 'overview' || view === 'logs') {
+                    state.loading.logs = true;
+                    const payload = await api('/api/admin/logs?limit=50', { headers: {} });
+                    state.logs = payload.logs;
+                  }
+                } finally {
+                  state.loading.accounts = false;
+                  state.loading.security = false;
+                  state.loading.logs = false;
+                  render();
                 }
               }
 
               loginForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 loginError.classList.add('hidden');
-                setBusy(true);
+                setTopBusy(true);
                 try {
-                  const response = await fetch('/api/admin/login', {
+                  await api('/api/admin/login', {
                     method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'content-type': 'application/json' },
                     body: JSON.stringify({ password: panelPassword.value }),
                   });
-                  const payload = await response.json().catch(() => ({}));
-                  if (!response.ok) {
-                    loginError.textContent = payload.detail || 'Login failed.';
-                    loginError.classList.remove('hidden');
-                    showToast('Panel authentication failed.', 'error');
-                    return;
-                  }
                   panelPassword.value = '';
                   showToast('Signed in successfully.', 'success');
                   await refreshBootstrap(false);
+                  await ensureViewData('overview');
+                } catch (error) {
+                  loginError.textContent = error.message || 'Login failed.';
+                  loginError.classList.remove('hidden');
+                  showToast('Panel authentication failed.', 'error');
                 } finally {
-                  setBusy(false);
+                  setTopBusy(false);
                 }
               });
 
-              refreshButton.addEventListener('click', () => refreshBootstrap(true));
-              logoutButton.addEventListener('click', async () => {
-                setBusy(true);
+              navList.addEventListener('click', async (event) => {
+                const target = event.target.closest('[data-view]');
+                if (!target) return;
+                state.currentView = target.dataset.view;
+                render();
+                await ensureViewData(state.currentView);
+              });
+
+              contentRoot.addEventListener('submit', async (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) return;
+
+                if (form.id === 'add-account-form') {
+                  event.preventDefault();
+                  const textarea = form.querySelector('#new-jwt');
+                  const submit = form.querySelector('#add-account-submit');
+                  const jwt = textarea.value.trim();
+                  if (!jwt) {
+                    showToast('JWT cannot be empty.', 'warn');
+                    return;
+                  }
+                  submit.disabled = true;
+                  submit.textContent = 'Verifying...';
+                  try {
+                    await api('/api/admin/accounts', {
+                      method: 'POST',
+                      body: JSON.stringify({ jwt }),
+                    });
+                    textarea.value = '';
+                    showToast('Account verified and stored.', 'success');
+                    await refreshBootstrap(false);
+                    await ensureViewData('accounts');
+                  } catch (error) {
+                    showToast(error.message || 'Failed to add account.', 'error');
+                  } finally {
+                    submit.disabled = false;
+                    submit.textContent = 'Verify and save';
+                  }
+                }
+
+                if (form.id === 'panel-password-form') {
+                  event.preventDefault();
+                  const input = form.querySelector('#panel-password-next');
+                  const submit = form.querySelector('button[type="submit"]');
+                  const password = input.value.trim();
+                  if (!password) {
+                    showToast('Panel password cannot be empty.', 'warn');
+                    return;
+                  }
+                  submit.disabled = true;
+                  try {
+                    await api('/api/admin/settings/security', {
+                      method: 'POST',
+                      body: JSON.stringify({ panel_password: password }),
+                    });
+                    input.value = '';
+                    showToast('Panel password updated.', 'success');
+                    await refreshBootstrap(false);
+                    await ensureViewData('security');
+                  } catch (error) {
+                    showToast(error.message || 'Failed to update panel password.', 'error');
+                  } finally {
+                    submit.disabled = false;
+                  }
+                }
+
+                if (form.id === 'api-password-form') {
+                  event.preventDefault();
+                  const input = form.querySelector('#api-password-next');
+                  const submit = form.querySelector('button[type="submit"]');
+                  const password = input.value.trim();
+                  if (!password) {
+                    showToast('API password cannot be empty.', 'warn');
+                    return;
+                  }
+                  submit.disabled = true;
+                  try {
+                    await api('/api/admin/settings/security', {
+                      method: 'POST',
+                      body: JSON.stringify({ api_password: password }),
+                    });
+                    input.value = '';
+                    showToast('API password updated.', 'success');
+                    await refreshBootstrap(false);
+                    await ensureViewData('security');
+                  } catch (error) {
+                    showToast(error.message || 'Failed to update API password.', 'error');
+                  } finally {
+                    submit.disabled = false;
+                  }
+                }
+              });
+
+              contentRoot.addEventListener('click', async (event) => {
+                const button = event.target.closest('[data-action]');
+                if (!button) return;
+                const action = button.dataset.action;
+
                 try {
-                  await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+                  if (action === 'reload-accounts') {
+                    await ensureViewData('accounts');
+                    showToast('Account list refreshed.', 'success');
+                  }
+                  if (action === 'reload-logs') {
+                    await ensureViewData('logs');
+                    showToast('Logs refreshed.', 'success');
+                  }
+                  if (action === 'disable-api-password') {
+                    button.disabled = true;
+                    await api('/api/admin/settings/security', {
+                      method: 'POST',
+                      body: JSON.stringify({ disable_api_password: true }),
+                    });
+                    showToast('API password disabled.', 'success');
+                    await refreshBootstrap(false);
+                    await ensureViewData('security');
+                  }
+                  if (action === 'check-account') {
+                    const accountId = button.dataset.accountId;
+                    button.disabled = true;
+                    await api(`/api/admin/accounts/${accountId}/check`, { method: 'POST' });
+                    showToast('Account health check finished.', 'success');
+                    await refreshBootstrap(false);
+                    await ensureViewData('accounts');
+                  }
+                  if (action === 'toggle-account') {
+                    const accountId = button.dataset.accountId;
+                    const enabled = button.dataset.enabled === '1';
+                    button.disabled = true;
+                    await api(`/api/admin/accounts/${accountId}/${enabled ? 'disable' : 'enable'}`, { method: 'POST' });
+                    showToast(enabled ? 'Account disabled.' : 'Account enabled.', 'success');
+                    await refreshBootstrap(false);
+                    await ensureViewData('accounts');
+                  }
+                } catch (error) {
+                  showToast(error.message || 'Action failed.', 'error');
+                } finally {
+                  button.disabled = false;
+                }
+              });
+
+              refreshButton.addEventListener('click', async () => {
+                setTopBusy(true);
+                try {
+                  await refreshBootstrap(true);
+                  if (state.loggedIn) {
+                    await ensureViewData(state.currentView);
+                  }
+                } finally {
+                  setTopBusy(false);
+                }
+              });
+
+              logoutButton.addEventListener('click', async () => {
+                setTopBusy(true);
+                try {
+                  await api('/api/admin/logout', { method: 'POST' });
                   state.loggedIn = false;
                   state.currentView = 'overview';
                   showToast('Signed out.', 'success');
                   await refreshBootstrap(false);
+                } catch (error) {
+                  showToast(error.message || 'Failed to sign out.', 'error');
                 } finally {
-                  setBusy(false);
+                  setTopBusy(false);
                 }
               });
 
-              refreshBootstrap(false);
+              (async () => {
+                try {
+                  await refreshBootstrap(false);
+                  if (state.loggedIn) {
+                    await ensureViewData('overview');
+                  }
+                } catch (error) {
+                  console.error(error);
+                  showToast('Failed to initialize control center.', 'error');
+                }
+              })();
             </script>
           </body>
         </html>
