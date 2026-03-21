@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from .account_pool import AccountPool
+from .admin_page import render_admin_page
 from .auth import AuthService
 from .config import Settings, settings
 from .db import AccountRecord, Database, LogRecord
@@ -161,14 +162,8 @@ def create_app(
         return {"status": "ok"}
 
     @app.get("/")
-    async def root(request: Request) -> HTMLResponse:
-        current_services = get_services(request)
-        is_logged_in = current_services.auth.verify_admin_session(
-            request.cookies.get(current_services.settings.admin_cookie_name)
-        )
-        if is_logged_in:
-            return HTMLResponse(render_logged_in_placeholder())
-        return HTMLResponse(render_login_placeholder())
+    async def root(_: Request) -> HTMLResponse:
+        return HTMLResponse(render_admin_page())
 
     @app.get("/api/admin/bootstrap")
     async def admin_bootstrap(request: Request) -> JSONResponse:
@@ -888,86 +883,3 @@ def make_response_id() -> str:
     return f"resp_{uuid.uuid4().hex}"
 
 
-def render_login_placeholder() -> str:
-    return """
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>zai2api admin</title>
-    <style>
-      body { font-family: sans-serif; margin: 40px; max-width: 480px; }
-      input, button { font-size: 16px; padding: 10px 12px; width: 100%; box-sizing: border-box; }
-      button { margin-top: 12px; cursor: pointer; }
-      .muted { color: #666; }
-      .status { margin-top: 16px; min-height: 20px; }
-    </style>
-  </head>
-  <body>
-    <h1>zai2api admin</h1>
-    <p class="muted">Frontend panel is not ready yet. Please authenticate to continue.</p>
-    <input id="password" type="password" placeholder="Panel password" />
-    <button id="login-button">Sign in</button>
-    <div class="status" id="status"></div>
-    <script>
-      const button = document.getElementById('login-button');
-      const password = document.getElementById('password');
-      const status = document.getElementById('status');
-      button.addEventListener('click', async () => {
-        status.textContent = 'Signing in...';
-        const response = await fetch('/api/admin/login', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ password: password.value })
-        });
-        if (response.ok) {
-          status.textContent = 'Signed in. Refreshing...';
-          window.location.reload();
-          return;
-        }
-        const payload = await response.json().catch(() => ({}));
-        status.textContent = payload.detail || 'Login failed';
-      });
-    </script>
-  </body>
-</html>
-    """.strip()
-
-
-def render_logged_in_placeholder() -> str:
-    return """
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>zai2api admin</title>
-    <style>
-      body { font-family: sans-serif; margin: 40px; max-width: 720px; }
-      button { font-size: 16px; padding: 10px 12px; cursor: pointer; }
-      pre { background: #f6f8fa; padding: 16px; border-radius: 8px; overflow: auto; }
-    </style>
-  </head>
-  <body>
-    <h1>zai2api admin</h1>
-    <p>Backend foundation is ready. Fluent-based dashboard will be added in a later phase.</p>
-    <p>
-      <button id="logout-button">Sign out</button>
-    </p>
-    <pre id="bootstrap">Loading bootstrap info...</pre>
-    <script>
-      async function loadBootstrap() {
-        const response = await fetch('/api/admin/bootstrap');
-        const payload = await response.json();
-        document.getElementById('bootstrap').textContent = JSON.stringify(payload, null, 2);
-      }
-      document.getElementById('logout-button').addEventListener('click', async () => {
-        await fetch('/api/admin/logout', { method: 'POST' });
-        window.location.reload();
-      });
-      loadBootstrap();
-    </script>
-  </body>
-</html>
-    """.strip()
