@@ -47,8 +47,18 @@ class UpstreamResult:
 
 
 class ZAIClient:
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        zai_jwt: str | None = None,
+        zai_session_token: str | None = None,
+    ):
         self.settings = settings
+        self.zai_jwt = settings.zai_jwt if zai_jwt is None else zai_jwt
+        self.zai_session_token = (
+            settings.zai_session_token if zai_session_token is None else zai_session_token
+        )
         self._client = httpx.AsyncClient(
             base_url=settings.zai_base_url,
             timeout=settings.request_timeout,
@@ -60,8 +70,8 @@ class ZAIClient:
         )
         self._lock = asyncio.Lock()
         self._session: SessionState | None = None
-        if settings.zai_session_token:
-            self._session = self._session_from_token(settings.zai_session_token)
+        if self.zai_session_token:
+            self._session = self._session_from_token(self.zai_session_token)
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -71,10 +81,10 @@ class ZAIClient:
             if self._session and not force_refresh:
                 return self._session
 
-            if self.settings.zai_jwt:
+            if self.zai_jwt:
                 response = await self._client.get(
                     "/api/v1/auths/",
-                    headers={"Authorization": f"Bearer {self.settings.zai_jwt}"},
+                    headers={"Authorization": f"Bearer {self.zai_jwt}"},
                 )
                 response.raise_for_status()
                 payload = response.json()
@@ -179,7 +189,7 @@ class ZAIClient:
                     yield chunk
                 return
             except httpx.HTTPStatusError as exc:
-                if exc.response.status_code == 401 and self.settings.zai_jwt and attempt == 0:
+                if exc.response.status_code == 401 and self.zai_jwt and attempt == 0:
                     continue
                 raise
 
