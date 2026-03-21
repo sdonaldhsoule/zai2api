@@ -27,12 +27,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.18 /uv /uvx /bin/
 
 WORKDIR /app
 
-RUN groupadd --system app && useradd --system --gid app --create-home --home-dir /app app
-
 COPY --from=builder /app /app
-RUN mkdir -p /app/data && chown -R app:app /app
-
-USER app
+RUN mkdir -p /app/data
 
 EXPOSE 8000
 VOLUME ["/app/data"]
