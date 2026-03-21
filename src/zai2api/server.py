@@ -14,8 +14,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from .account_pool import AccountPool
 from .admin_page import render_admin_page
 from .auth import AuthService
-from .config import Settings, settings
-from .db import AccountRecord, Database, LogRecord
+from .config import DEFAULT_LOG_RETENTION_DAYS, Settings, settings
+from .db import AccountRecord, Database, LOG_RETENTION_DAYS_KEY, LogRecord
 from .prompt_assembly import assemble_prompt
 from .zai_client import UpstreamResult, ZAIClient, normalize_usage
 
@@ -128,6 +128,7 @@ def create_app(
     async def lifespan(app: FastAPI):
         services.db.initialize()
         services.db.delete_expired_admin_sessions()
+        services.db.delete_logs_before(log_retention_cutoff(services))
         services.db.add_log(
             level="info",
             category="startup",
@@ -138,6 +139,7 @@ def create_app(
                 "panel_password_source": services.auth.panel_password_source(),
                 "persisted_accounts": services.db.count_accounts(),
                 "poll_interval_seconds": services.settings.account_poll_interval_seconds,
+                "log_retention_days": current_log_retention_days(services),
             },
         )
         app.state.services = services
@@ -301,6 +303,7 @@ def create_app(
     async def admin_logs(request: Request, limit: int = 100) -> JSONResponse:
         current_services = get_services(request)
         require_admin_session(request, current_services)
+        current_services.db.delete_logs_before(log_retention_cutoff(current_services))
         safe_limit = max(1, min(limit, 500))
         return JSONResponse({"logs": [serialize_log(item) for item in current_services.db.list_logs(safe_limit)]})
 
@@ -330,6 +333,16 @@ def create_app(
             if api_password:
                 current_services.auth.update_api_password(api_password)
                 changed.append("api_password")
+
+        log_retention_days = payload.get("log_retention_days")
+        if log_retention_days is not None:
+            try:
+                retention_days = max(1, int(log_retention_days))
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail="log_retention_days must be a positive integer") from exc
+            current_services.db.set_setting(LOG_RETENTION_DAYS_KEY, str(retention_days))
+            current_services.db.delete_logs_before(log_retention_cutoff(current_services, retention_days))
+            changed.append("log_retention_days")
 
         if not changed:
             raise HTTPException(status_code=400, detail="No security changes requested")
@@ -859,6 +872,7 @@ def serialize_log(record: LogRecord) -> dict[str, Any]:
 def serialize_security_settings(services: AppServices) -> dict[str, Any]:
     panel_source = services.auth.panel_password_source()
     api_source = services.auth.api_password_source()
+    log_retention_source = log_retention_days_source(services)
     return {
         "panel_password": {
             "source": panel_source,
@@ -869,6 +883,12 @@ def serialize_security_settings(services: AppServices) -> dict[str, Any]:
             "source": api_source,
             "enabled": services.auth.is_api_auth_enabled(),
             "overridden_by_env": api_source == "env",
+        },
+        "log_retention": {
+            "days": current_log_retention_days(services),
+            "source": log_retention_source,
+            "overridden_by_env": log_retention_source == "env",
+            "default_active": log_retention_source == "default",
         },
         "poll_interval_seconds": services.settings.account_poll_interval_seconds,
     }
@@ -884,6 +904,31 @@ def resolve_model_request(requested_model: str) -> tuple[str, bool]:
         upstream_model = requested_model[: -len(NOTHINKING_MODEL_SUFFIX)] or requested_model
         return upstream_model, False
     return requested_model, True
+
+
+def current_log_retention_days(services: AppServices) -> int:
+    if services.settings.log_retention_days_env is not None:
+        return max(1, int(services.settings.log_retention_days_env))
+    stored_value = services.db.get_setting(LOG_RETENTION_DAYS_KEY)
+    if stored_value is not None:
+        try:
+            return max(1, int(stored_value))
+        except ValueError:
+            pass
+    return DEFAULT_LOG_RETENTION_DAYS
+
+
+def log_retention_days_source(services: AppServices) -> str:
+    if services.settings.log_retention_days_env is not None:
+        return "env"
+    if services.db.get_setting(LOG_RETENTION_DAYS_KEY) is not None:
+        return "database"
+    return "default"
+
+
+def log_retention_cutoff(services: AppServices, retention_days: int | None = None) -> int:
+    days = retention_days if retention_days is not None else current_log_retention_days(services)
+    return int(time.time()) - (max(1, int(days)) * 86400)
 
 
 def mask_secret(secret: str | None, prefix: int = 6, suffix: int = 4) -> str | None:

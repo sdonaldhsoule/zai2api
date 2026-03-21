@@ -119,12 +119,18 @@ def test_admin_can_update_security_settings_and_read_logs(tmp_path: Path) -> Non
 
         updated = client.post(
             "/api/admin/settings/security",
-            json={"panel_password": "new-panel", "api_password": "api-secret"},
+            json={
+                "panel_password": "new-panel",
+                "api_password": "api-secret",
+                "log_retention_days": 14,
+            },
         )
         assert updated.status_code == 200
         payload = updated.json()
         assert payload["panel_password"]["source"] == "database"
         assert payload["api_password"]["enabled"] is True
+        assert payload["log_retention"]["days"] == 14
+        assert payload["log_retention"]["source"] == "database"
 
         client.post("/api/admin/logout")
         relogin = client.post("/api/admin/login", json={"password": "new-panel"})
