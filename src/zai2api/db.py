@@ -37,6 +37,7 @@ class AccountRecord:
     last_checked_at: int | None
     last_error: str | None
     failure_count: int
+    request_count: int
     created_at: int
     updated_at: int
 
@@ -83,6 +84,7 @@ class Database:
                     last_checked_at INTEGER,
                     last_error TEXT,
                     failure_count INTEGER NOT NULL DEFAULT 0,
+                    request_count INTEGER NOT NULL DEFAULT 0,
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
                 );
@@ -95,6 +97,7 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at ON admin_sessions(expires_at);
                 """
             )
+            self._ensure_account_schema(conn)
 
     def get_setting(self, key: str) -> str | None:
         with self._connect() as conn:
@@ -270,6 +273,7 @@ class Database:
         session_token: str | None = None,
         name: str | None = None,
         email: str | None = None,
+        count_request: bool = False,
     ) -> None:
         now = int(time.time())
         with self._connect() as conn:
@@ -283,7 +287,8 @@ class Database:
                 """
                 UPDATE accounts
                 SET session_token = ?, name = ?, email = ?, enabled = 1, status = 'active',
-                    last_checked_at = ?, last_error = NULL, failure_count = 0, updated_at = ?
+                    last_checked_at = ?, last_error = NULL, failure_count = 0,
+                    request_count = request_count + ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
@@ -291,6 +296,7 @@ class Database:
                     name if name is not None else existing["name"],
                     email if email is not None else existing["email"],
                     now,
+                    int(count_request),
                     now,
                     account_id,
                 ),
@@ -383,6 +389,7 @@ class Database:
         return None
 
     def _row_to_account(self, row: sqlite3.Row) -> AccountRecord:
+        keys = set(row.keys())
         return AccountRecord(
             id=int(row["id"]),
             jwt=row["jwt"],
@@ -395,9 +402,20 @@ class Database:
             last_checked_at=int(row["last_checked_at"]) if row["last_checked_at"] is not None else None,
             last_error=str(row["last_error"]) if row["last_error"] is not None else None,
             failure_count=int(row["failure_count"]),
+            request_count=int(row["request_count"]) if "request_count" in keys else 0,
             created_at=int(row["created_at"]),
             updated_at=int(row["updated_at"]),
         )
+
+    def _ensure_account_schema(self, conn: sqlite3.Connection) -> None:
+        columns = {
+            str(row["name"])
+            for row in conn.execute("PRAGMA table_info(accounts)").fetchall()
+        }
+        if "request_count" not in columns:
+            conn.execute(
+                "ALTER TABLE accounts ADD COLUMN request_count INTEGER NOT NULL DEFAULT 0"
+            )
 
     def _delete_logs_before_conn(self, conn: sqlite3.Connection, cutoff: int) -> int:
         cursor = conn.execute("DELETE FROM logs WHERE created_at < ?", (cutoff,))

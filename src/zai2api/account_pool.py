@@ -266,6 +266,7 @@ class AccountPool:
             session_token=session.token,
             name=session.name,
             email=session.email,
+            count_request=True,
         )
 
     async def _handle_failure(self, routed: RoutedAccount, error: Exception) -> None:

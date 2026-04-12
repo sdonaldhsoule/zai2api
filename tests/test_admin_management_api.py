@@ -103,6 +103,7 @@ def test_admin_can_add_list_and_toggle_accounts(tmp_path: Path) -> None:
         listed = client.get("/api/admin/accounts")
         assert listed.status_code == 200
         assert len(listed.json()["accounts"]) == 1
+        assert listed.json()["accounts"][0]["request_count"] == 0
 
         disabled = client.post(f"/api/admin/accounts/{account['id']}/disable")
         assert disabled.status_code == 200
@@ -171,6 +172,10 @@ def test_openai_requests_are_written_to_audit_logs(tmp_path: Path) -> None:
             json={"model": "glm-5", "input": "hello"},
         )
         assert response_api.status_code == 200
+
+        accounts = client.get("/api/admin/accounts")
+        assert accounts.status_code == 200
+        assert accounts.json()["accounts"][0]["request_count"] == 2
 
         logs = client.get("/api/admin/logs?limit=50")
         assert logs.status_code == 200

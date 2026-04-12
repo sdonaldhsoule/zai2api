@@ -8,7 +8,7 @@ import httpx
 from zai2api.account_pool import AccountPool
 from zai2api.config import Settings
 from zai2api.db import Database
-from zai2api.zai_client import SessionState, UpstreamResult
+from zai2api.zai_client import SessionState, UpstreamChunk, UpstreamResult
 
 
 class FakeClient:
@@ -126,6 +126,8 @@ def test_account_pool_rotates_enabled_accounts(tmp_path: Path) -> None:
     assert second_result.answer_text == "beta:hello"
     assert db.get_account(first.id).status == "active"
     assert db.get_account(second.id).status == "active"
+    assert db.get_account(first.id).request_count == 1
+    assert db.get_account(second.id).request_count == 1
 
 
 def test_account_pool_disables_unauthorized_account(tmp_path: Path) -> None:
@@ -213,3 +215,47 @@ def test_check_account_can_reenable_account(tmp_path: Path) -> None:
     assert updated.enabled is True
     assert updated.status == "active"
     assert updated.failure_count == 0
+    assert updated.request_count == 0
+
+
+def test_stream_prompt_increments_request_count_after_success(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path)
+    db = Database(settings.database_path)
+    db.initialize()
+    account = db.upsert_account(
+        jwt="jwt-a",
+        session_token="token-a",
+        user_id="user-a",
+        email="a@example.com",
+        name="a",
+    )
+
+    class StreamingFakeClient(FakeClient):
+        async def stream_prompt(self, **_: object):
+            yield UpstreamChunk(phase="thinking", text="思考中")
+            yield UpstreamChunk(
+                phase="answer",
+                text="完成",
+                usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            )
+
+    def client_factory(jwt: str | None, session_token: str | None) -> StreamingFakeClient:
+        return StreamingFakeClient(name="a", answer="alpha")
+
+    pool = AccountPool(settings, db, client_factory=client_factory)
+
+    async def consume_stream() -> list[UpstreamChunk]:
+        chunks: list[UpstreamChunk] = []
+        async for chunk in pool.stream_prompt(
+            prompt="hello",
+            model="glm-5",
+            enable_thinking=True,
+            auto_web_search=False,
+        ):
+            chunks.append(chunk)
+        return chunks
+
+    chunks = asyncio.run(consume_stream())
+
+    assert len(chunks) == 2
+    assert db.get_account(account.id).request_count == 1

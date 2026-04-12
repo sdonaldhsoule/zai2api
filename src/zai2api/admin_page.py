@@ -1122,6 +1122,7 @@ def render_admin_page() -> str:
                     <div class="detail-list">
                       <div class="detail-row"><span class="metric-label">JWT</span><code>${account.masked_jwt || '—'}</code></div>
                       <div class="detail-row"><span class="metric-label">会话</span><code>${account.masked_session_token || '—'}</code></div>
+                      <div class="detail-row"><span class="metric-label">调用次数</span><div class="muted-copy">${account.request_count ?? 0}</div></div>
                       <div class="detail-row"><span class="metric-label">最近检查</span><div class="muted-copy">${formatTimestamp(account.last_checked_at)}</div></div>
                       <div class="detail-row"><span class="metric-label">失败次数</span><div class="muted-copy">${account.failure_count}</div></div>
                       <div class="detail-row"><span class="metric-label">最近错误</span><div class="muted-copy">${account.last_error || '无'}</div></div>

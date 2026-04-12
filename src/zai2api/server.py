@@ -1019,6 +1019,7 @@ def serialize_account(account: AccountRecord) -> dict[str, Any]:
         "last_checked_at": account.last_checked_at,
         "last_error": account.last_error,
         "failure_count": account.failure_count,
+        "request_count": account.request_count,
         "masked_jwt": mask_secret(account.jwt),
         "masked_session_token": mask_secret(account.session_token),
         "created_at": account.created_at,
