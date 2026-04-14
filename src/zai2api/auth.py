@@ -104,9 +104,13 @@ class AuthService:
     def verify_admin_session(self, session_id: str | None) -> bool:
         if not session_id:
             return False
-        self.db.delete_expired_admin_sessions()
         session = self.db.get_admin_session(session_id)
-        return session is not None
+        if session is None:
+            return False
+        if session["expires_at"] <= int(time.time()):
+            self.db.delete_admin_session(session_id)
+            return False
+        return True
 
     def delete_admin_session(self, session_id: str | None) -> None:
         if not session_id:

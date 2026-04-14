@@ -92,7 +92,7 @@ PUBLIC_MODEL_ALIASES: dict[str, str] = {
     "glm-5.1": "GLM-5.1",
     "glm-5-turbo": "GLM-5-Turbo",
 }
-UPSTREAM_MODEL_ALIASES: dict[str, str] = {upstream: public for public, upstream in PUBLIC_MODEL_ALIASES.items()}
+UPSTREAM_TO_PUBLIC_MAP: dict[str, str] = {upstream: public for public, upstream in PUBLIC_MODEL_ALIASES.items()}
 
 
 def create_app(
@@ -102,7 +102,10 @@ def create_app(
     account_pool: AccountPool | None = None,
 ) -> FastAPI:
     resolved_settings = app_settings or settings
-    db = Database(resolved_settings.database_path)
+    db = Database(
+        resolved_settings.database_path,
+        log_retention_days=resolved_settings.log_retention_days_env,
+    )
     auth = AuthService(resolved_settings, db)
 
     managed_upstream_client = upstream_client
@@ -309,7 +312,6 @@ def create_app(
     async def admin_logs(request: Request, limit: int = 100) -> JSONResponse:
         current_services = get_services(request)
         require_admin_session(request, current_services)
-        current_services.db.delete_logs_before(log_retention_cutoff(current_services))
         safe_limit = max(1, min(limit, 500))
         return JSONResponse({"logs": [serialize_log(item) for item in current_services.db.list_logs(safe_limit)]})
 
@@ -1102,7 +1104,7 @@ def canonical_public_model_name(requested_model: str) -> str:
     lower_model = requested_model.lower()
     if lower_model in PUBLIC_MODEL_ALIASES:
         return lower_model
-    return UPSTREAM_MODEL_ALIASES.get(requested_model, requested_model)
+    return UPSTREAM_TO_PUBLIC_MAP.get(requested_model, requested_model)
 
 
 def current_log_retention_days(services: AppServices) -> int:

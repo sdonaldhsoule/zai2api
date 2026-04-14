@@ -208,22 +208,32 @@ class AccountPool:
         if not candidates:
             raise RuntimeError("当前没有可用的启用账号")
 
-        routed = candidates[0]
-        client = self._client_factory(routed.jwt, routed.session_token)
-        try:
-            async for chunk in client.stream_prompt(
-                prompt=prompt,
-                model=model,
-                enable_thinking=enable_thinking,
-                auto_web_search=auto_web_search,
-            ):
-                yield chunk
-            await self._mark_success(routed, client)
-        except Exception as exc:
-            await self._handle_failure(routed, exc)
-            raise
-        finally:
-            await client.aclose()
+        last_error: Exception | None = None
+        for routed in candidates:
+            client = self._client_factory(routed.jwt, routed.session_token)
+            try:
+                started = False
+                async for chunk in client.stream_prompt(
+                    prompt=prompt,
+                    model=model,
+                    enable_thinking=enable_thinking,
+                    auto_web_search=auto_web_search,
+                ):
+                    started = True
+                    yield chunk
+                await self._mark_success(routed, client)
+                return
+            except Exception as exc:
+                last_error = exc
+                await self._handle_failure(routed, exc)
+                if started:
+                    raise
+            finally:
+                await client.aclose()
+
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("当前没有可用的启用账号")
 
     async def _candidate_accounts(self) -> list[RoutedAccount]:
         persisted = [

@@ -6,9 +6,10 @@ from pathlib import Path
 import httpx
 
 from zai2api.account_pool import AccountPool
-from zai2api.config import Settings
 from zai2api.db import Database
 from zai2api.zai_client import SessionState, UpstreamChunk, UpstreamResult
+
+from conftest import make_settings
 
 
 class FakeClient:
@@ -54,28 +55,6 @@ class FakeClient:
 
     async def aclose(self) -> None:
         return None
-
-
-def make_settings(tmp_path: Path, **overrides: object) -> Settings:
-    base = Settings(
-        host="127.0.0.1",
-        port=8000,
-        log_level="info",
-        zai_base_url="https://chat.z.ai",
-        zai_jwt=None,
-        zai_session_token=None,
-        default_model="glm-5",
-        request_timeout=120.0,
-        database_path=str(tmp_path / "state.db"),
-        panel_password_env=None,
-        api_password_env=None,
-        admin_cookie_name="zai2api_admin_session",
-        admin_session_ttl_hours=24,
-        admin_cookie_secure=False,
-    )
-    for key, value in overrides.items():
-        setattr(base, key, value)
-    return base
 
 
 def test_account_pool_rotates_enabled_accounts(tmp_path: Path) -> None:

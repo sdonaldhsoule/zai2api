@@ -1040,6 +1040,16 @@ def render_admin_page() -> str:
                 loginSubmit.textContent = flag ? '登录中...' : '登录';
               }
 
+              function escapeHtml(str) {
+                if (str == null) return '';
+                return String(str)
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;');
+              }
+
               function formatTimestamp(value) {
                 if (!value) return '—';
                 const date = new Date(value * 1000);
@@ -1060,8 +1070,8 @@ def render_admin_page() -> str:
               }
 
               function displayLabel(labels, value, fallback = '未知') {
-                if (!value) return fallback;
-                return labels[value] || value;
+                if (!value) return escapeHtml(fallback);
+                return labels[value] || escapeHtml(value);
               }
 
               function renderPill(label, tone = '') {
@@ -1114,18 +1124,18 @@ def render_admin_page() -> str:
                   <article class="account-card">
                     <div class="account-card-header">
                       <div>
-                        <h3 class="account-card-title">${account.name || account.email || account.user_id || '未命名账号'}</h3>
-                        <div class="account-meta">${account.email || account.user_id || '暂无身份信息'}</div>
+                        <h3 class="account-card-title">${escapeHtml(account.name || account.email || account.user_id || '未命名账号')}</h3>
+                        <div class="account-meta">${escapeHtml(account.email || account.user_id || '暂无身份信息')}</div>
                       </div>
                       ${accountStatusBadge(account.enabled, account.status)}
                     </div>
                     <div class="detail-list">
-                      <div class="detail-row"><span class="metric-label">JWT</span><code>${account.masked_jwt || '—'}</code></div>
-                      <div class="detail-row"><span class="metric-label">会话</span><code>${account.masked_session_token || '—'}</code></div>
+                      <div class="detail-row"><span class="metric-label">JWT</span><code>${escapeHtml(account.masked_jwt || '—')}</code></div>
+                      <div class="detail-row"><span class="metric-label">会话</span><code>${escapeHtml(account.masked_session_token || '—')}</code></div>
                       <div class="detail-row"><span class="metric-label">调用次数</span><div class="muted-copy">${account.request_count ?? 0}</div></div>
                       <div class="detail-row"><span class="metric-label">最近检查</span><div class="muted-copy">${formatTimestamp(account.last_checked_at)}</div></div>
                       <div class="detail-row"><span class="metric-label">失败次数</span><div class="muted-copy">${account.failure_count}</div></div>
-                      <div class="detail-row"><span class="metric-label">最近错误</span><div class="muted-copy">${account.last_error || '无'}</div></div>
+                      <div class="detail-row"><span class="metric-label">最近错误</span><div class="muted-copy">${escapeHtml(account.last_error || '无')}</div></div>
                     </div>
                     <div class="account-actions">
                       <button class="secondary-button" data-action="check-account" data-account-id="${account.id}">检测</button>
@@ -1146,12 +1156,12 @@ def render_admin_page() -> str:
                         <span class="log-time">${formatTimestamp(log.created_at)}</span>
                       </div>
                       <div class="log-mainline">
-                        <div class="log-message">${log.message}</div>
+                        <div class="log-message">${escapeHtml(log.message)}</div>
                         <div class="log-context">${displayLabel(logCategoryLabels, log.category, log.category || '未知')}</div>
                       </div>
                       <span class="log-toggle">查看详情 <span class="log-caret">▾</span></span>
                     </summary>
-                    ${detailText ? `<div class="log-details">${detailText}</div>` : '<div class="log-empty">暂无详情</div>'}
+                    ${detailText ? `<div class="log-details">${escapeHtml(detailText)}</div>` : '<div class="log-empty">暂无详情</div>'}
                   </details>
                 `;
               }
