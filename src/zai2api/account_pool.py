@@ -246,16 +246,8 @@ class AccountPool:
             )
             for account in self.db.list_accounts(enabled_only=True, healthy_only=True)
         ]
-
-        if persisted:
-            async with self._lock:
-                start = self._cursor % len(persisted)
-                ordered = persisted[start:] + persisted[:start]
-                self._cursor = (start + 1) % len(persisted)
-            return ordered
-
-        if self.settings.zai_jwt or self.settings.zai_session_token:
-            return [
+        env_fallback = (
+            [
                 RoutedAccount(
                     account_id=None,
                     jwt=self.settings.zai_jwt,
@@ -264,6 +256,19 @@ class AccountPool:
                     persistent=False,
                 )
             ]
+            if (self.settings.zai_jwt or self.settings.zai_session_token)
+            else []
+        )
+
+        if persisted:
+            async with self._lock:
+                start = self._cursor % len(persisted)
+                ordered = persisted[start:] + persisted[:start]
+                self._cursor = (start + 1) % len(persisted)
+            return ordered + env_fallback
+
+        if env_fallback:
+            return env_fallback
 
         return []
 

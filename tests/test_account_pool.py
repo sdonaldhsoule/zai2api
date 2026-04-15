@@ -152,6 +152,42 @@ def test_account_pool_disables_unauthorized_account(tmp_path: Path) -> None:
     assert bad_account.status == "invalid"
 
 
+def test_account_pool_falls_back_to_env_account_when_persisted_fails(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path, zai_session_token="env-token")
+    db = Database(settings.database_path)
+    db.initialize()
+    bad = db.upsert_account(
+        jwt="jwt-bad",
+        session_token="token-bad",
+        user_id="user-bad",
+        email="bad@example.com",
+        name="bad",
+    )
+
+    def client_factory(jwt: str | None, session_token: str | None) -> FakeClient:
+        if session_token == "token-bad":
+            return FakeClient(name="bad", answer="bad", fail_status=405)
+        if session_token == "env-token":
+            return FakeClient(name="env", answer="env")
+        raise AssertionError(f"unexpected session token: {session_token}")
+
+    pool = AccountPool(settings, db, client_factory=client_factory)
+    result = asyncio.run(
+        pool.collect_prompt(
+            prompt="hello",
+            model="glm-5",
+            enable_thinking=True,
+            auto_web_search=False,
+        )
+    )
+
+    bad_account = db.get_account(bad.id)
+    assert result.answer_text == "env:hello"
+    assert bad_account is not None
+    assert bad_account.enabled is True
+    assert bad_account.status == "error"
+
+
 def test_register_jwt_persists_account(tmp_path: Path) -> None:
     settings = make_settings(tmp_path)
     db = Database(settings.database_path)
